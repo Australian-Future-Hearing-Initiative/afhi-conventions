@@ -6,18 +6,19 @@ review expectations.
 
 ## How the rules fit together
 
-Three files apply, from most general to most specific:
+These files apply, from most general to most specific:
 
 1. This org-wide file.
-2. The language file the repository names: `python.md`, `dart-flutter.md`,
-   `kotlin.md` or `shell.md`.
+2. The shared files the repository names: its language file (`python.md`,
+   `dart-flutter.md`, `kotlin.md` or `shell.md`) and, for research code,
+   `research.md`.
 3. The repository's own `AGENTS.md`, which names the exact location and
    adopted revision of the shared files it follows, and how they are updated.
 
 When they disagree:
 
 - **The more specific file wins.** The repository's `AGENTS.md` beats the
-  language file, and the language file beats this one.
+  shared files, and the shared files beat this one.
 - **A repository may tighten or add rules.** Loosening one is a standing
   exception, recorded with its reason in that `AGENTS.md`.
 - **An unrecorded conflict still goes to the repository file.** Follow it, and
