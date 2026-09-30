@@ -75,10 +75,10 @@ pre-push` mirrors CI locally.
 - Public signatures are type-annotated and `pyrefly check` passes. Baseline
   pre-existing errors with the per-line `# pyrefly: ignore [kind]` that
   `pyrefly check --suppress-errors` writes — never by excluding the file.
-- Constants are `UPPER_SNAKE`; new ones carry a unit suffix
-  (`DEFAULT_SAMPLE_RATE_HZ`, `CALIBRATION_LEVEL_DB`). Private names take a
-  leading underscore; a package's `__init__.py` exports a sorted `__all__` and
-  `__version__`.
+- Constants are `UPPER_SNAKE`. Any new name that holds a physical quantity —
+  constant, field or variable — carries its unit: `DEFAULT_SAMPLE_RATE_HZ`,
+  `threshold_db_spl`, `wave1_uv`. Private names take a leading underscore; a
+  package's `__init__.py` exports a sorted `__all__` and `__version__`.
 - Output goes through `absl.logging` or `logging`, never `print`, except a
   CLI's user-facing output (`click.echo`, or `print` inside `scripts/`).
 - Errors: guard at the boundary where an input arrives, naming the field and
