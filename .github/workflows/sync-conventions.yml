@@ -1,0 +1,52 @@
+name: Sync conventions
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - CONVENTIONS.md
+      - research.md
+      - languages/**
+      - .github/workflows/sync-conventions.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Add a repository here when it adopts the conventions.
+        include:
+          - repo: hp-acoustic
+            files: CONVENTIONS.md languages/python.md research.md
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: conventions
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: Australian-Future-Hearing-Initiative/${{ matrix.repo }}
+          token: ${{ secrets.CONVENTIONS_SYNC_TOKEN }}
+          path: target
+      - name: Copy shared files into .afhi/
+        env:
+          FILES: ${{ matrix.files }}
+        run: |
+          # Start clean so a file dropped from the list is removed.
+          rm -rf target/.afhi
+          mkdir target/.afhi
+          for f in $FILES; do cp "conventions/$f" "target/.afhi/$(basename "$f")"; done
+          echo "$GITHUB_SHA" > target/.afhi/REVISION
+      - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          path: target
+          token: ${{ secrets.CONVENTIONS_SYNC_TOKEN }}
+          branch: chore/sync-afhi-conventions
+          delete-branch: true
+          commit-message: "chore: sync AFHI conventions"
+          title: "chore: sync AFHI conventions"
+          body: "Updates `.afhi/` to Australian-Future-Hearing-Initiative/afhi-conventions@${{ github.sha }}."
