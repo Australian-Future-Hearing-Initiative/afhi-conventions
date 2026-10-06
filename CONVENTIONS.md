@@ -106,9 +106,9 @@ calibration, a stability fix — keep a concise inline reason and link to the
 `docs/` page that carries the derivation. Do not delete the reasoning because
 it is long.
 
-This governs prose in source code only — commit messages, PR bodies, `docs/`
-and comments in config files (YAML, TOML) stay as thorough as the subject
-needs. Licence headers, shebangs, generated-code banners and tool directives
+This governs prose in source code only — commit messages, `docs/` and
+comments in config files (YAML, TOML) stay as thorough as the subject needs.
+Licence headers, shebangs, generated-code banners and tool directives
 (`# noqa`, `// ignore:`) are not comments for this purpose.
 
 Also not allowed:
@@ -163,10 +163,11 @@ Every change also follows these rules:
   72 characters, `!` for a breaking change, scope when the repo has more than
   one area — `fix(pipeline): drop the default 64-chunk cap`. Types: `feat fix
   refactor test docs ci chore perf`.
-- Description: **Changes**, **Verification** (each check, its result, or why
-  it was not run), **Out of scope** (including problems noticed but not fixed;
-  see [Scope](#scope)). Historical reasoning, rejected alternatives and
-  migration notes live here, not in the code.
+- Description: about 100 words, because the reviewer reads the diff too. Say
+  what changed and why, and how it was verified (each check and its result,
+  or why none ran). Do not restate the diff. Add **Out of scope** only for
+  problems noticed but not fixed (see [Scope](#scope)). Answer review
+  comments in their threads, not by appending revision notes.
 - Keep unrelated formatting, renames and file moves out of behavioural PRs. A
   whole-repo reformat is its own PR and is added to `.git-blame-ignore-revs`.
 - Branch names follow `<type>/[<issue>-]<slug>` (e.g.
