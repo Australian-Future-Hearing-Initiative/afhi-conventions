@@ -1,13 +1,14 @@
 # Python
 
-Applies on top of the org-wide `AGENTS.md` (synced beside this file; the
+Applies on top of the org-wide `CONVENTIONS.md` (synced beside this file; the
 canonical copy is in
 [afhi-conventions](https://github.com/Australian-Future-Hearing-Initiative/afhi-conventions)).
 These rules are modelled on `hp-acoustic`. A repository that departs from
-them, as older ones will, lists each departure under **Known exceptions** in
-its own `AGENTS.md`. The style is the
+them, as older ones will, records each departure under **Rules and
+exceptions** in its own `AGENTS.md`. The base style is the
 [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html),
-enforced by ruff and pyrefly rather than by review.
+enforced by ruff and pyrefly rather than by review; where this file differs
+from it, such as the 2-space indent, this file wins.
 
 ## Toolchain
 
