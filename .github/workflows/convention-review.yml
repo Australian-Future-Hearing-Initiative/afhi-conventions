@@ -1,7 +1,6 @@
 name: Convention review
 
 on:
-  pull_request:
   workflow_call:
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN:
@@ -15,10 +14,8 @@ concurrency:
 
 jobs:
   review:
-    # Add a repository here to have its PRs reviewed.
     if: >-
-      contains(fromJSON('["convention-review-sandbox", "hp-acoustic", "carfac-ephys"]'), github.event.repository.name)
-      && !github.event.pull_request.draft
+      contains(github.event.pull_request.labels.*.name, 'claude-review')
       && github.event.pull_request.user.type != 'Bot'
       && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
@@ -29,25 +26,24 @@ jobs:
       id-token: write
     env:
       PR: ${{ github.event.pull_request.number }}
-      RELABELLED: ${{ contains(github.event.pull_request.labels.*.name, 'claude-review') }}
     steps:
-      # Ruleset runs fire on every push, so each PR is reviewed once unless relabelled.
-      - name: Check for an earlier review
-        id: earlier
+      # A queued run's event still shows the label after an earlier run removed it.
+      - name: Check the label is still there
+        id: label
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          reviewed=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
-            --jq '.[] | select(.body | contains("<!-- afhi-convention-review -->")) | .id')
-          if [ -z "$reviewed" ] || [ "$RELABELLED" = true ]; then
+          labelled=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/labels" \
+            --jq '.[] | select(.name == "claude-review") | .name')
+          if [ -n "$labelled" ]; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           fi
-      - if: steps.earlier.outputs.run == 'true'
+      - if: steps.label.outputs.run == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 1
       # Only the org-wide file: a repo follows a language file once the sync adds it to .afhi/.
-      - if: steps.earlier.outputs.run == 'true'
+      - if: steps.label.outputs.run == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: Australian-Future-Hearing-Initiative/afhi-conventions
@@ -55,7 +51,7 @@ jobs:
           sparse-checkout: CONVENTIONS.md
           sparse-checkout-cone-mode: false
       - name: Save existing comments
-        if: steps.earlier.outputs.run == 'true'
+        if: steps.label.outputs.run == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -64,9 +60,9 @@ jobs:
             gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/comments" --paginate --jq '.[] | {path, line, body}'
             gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate --jq '.[] | {body}'
           } > .afhi-review/existing-comments.jsonl
-      - if: steps.earlier.outputs.run == 'true'
+      - if: steps.label.outputs.run == 'true'
         uses: anthropics/claude-code-action@6c690188da61cf16ee7debb28383ba67f02abb4c # v1.0.242
-        # A failed review must never fail the check the ruleset watches.
+        # A failed review must never turn the PR's checks red.
         continue-on-error: true
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -98,16 +94,15 @@ jobs:
             Output:
             - At most 5 inline comments, one or two sentences each, starting with
               the rule's file and section, e.g. "CONVENTIONS.md, Tests: ...".
-            - Then exactly one `gh pr comment` whose body starts with the line
-              <!-- afhi-convention-review --> followed by at most 3 lines: the
-              number of findings, any that did not fit inline, and any about the
-              title or description. Leave out a line that would say "none". With
-              no new findings, write only "Convention review: no new issues found."
+            - Then exactly one `gh pr comment` of at most 3 lines: the number of
+              findings, any that did not fit inline, and any about the title or
+              description. Leave out a line that would say "none". With no new
+              findings, write only "Convention review: no new issues found."
             - No praise, no summary of the diff, nothing beyond the rules.
             - Never quote values from data files or anything that could be
               participant data; name the file and line instead.
-      - name: Clear the re-review label
-        if: steps.earlier.outputs.run == 'true' && env.RELABELLED == 'true'
+      - name: Remove the label so the next review needs a new request
+        if: steps.label.outputs.run == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh pr edit "$PR" --remove-label claude-review

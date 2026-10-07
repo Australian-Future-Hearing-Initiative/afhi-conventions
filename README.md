@@ -5,9 +5,27 @@ Org-wide coding conventions for Australian Future Hearing Initiative repositorie
 ## Convention review
 
 [`convention-review.yml`](.github/workflows/convention-review.yml) has Claude
-review each PR against these conventions, commenting only on lines the PR
-changes. An organisation ruleset in Evaluate mode runs it, so it never blocks
-a merge. The list in its job names the repositories it reviews: to add one,
-add its name there and give that repository access to the
-`CLAUDE_CODE_OAUTH_TOKEN` organisation secret. A PR is reviewed once; to
-review it again, add the `claude-review` label and push.
+review a PR against these conventions when someone with write access adds the
+`claude-review` label, draft or not. It comments only on lines the PR changes,
+never blocks a merge, and removes the label afterwards, so each label requests
+one review.
+
+To turn it on in a repository, create the `claude-review` label, give the
+repository access to the `CLAUDE_CODE_OAUTH_TOKEN` organisation secret, and
+add this as `.github/workflows/convention-review.yml`:
+
+```yaml
+name: Convention review
+on:
+  pull_request:
+    types: [opened, reopened, labeled]
+jobs:
+  review:
+    if: contains(github.event.pull_request.labels.*.name, 'claude-review')
+    uses: Australian-Future-Hearing-Initiative/afhi-conventions/.github/workflows/convention-review.yml@main
+    secrets: inherit
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+```
