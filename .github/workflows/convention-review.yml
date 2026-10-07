@@ -1,0 +1,113 @@
+name: Convention review
+
+on:
+  pull_request:
+  workflow_call:
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN:
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: convention-review-${{ github.repository }}-${{ github.event.pull_request.number }}
+
+jobs:
+  review:
+    # Add a repository here to have its PRs reviewed.
+    if: >-
+      contains(fromJSON('["convention-review-sandbox", "hp-acoustic", "carfac-ephys"]'), github.event.repository.name)
+      && !github.event.pull_request.draft
+      && github.event.pull_request.user.type != 'Bot'
+      && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+    env:
+      PR: ${{ github.event.pull_request.number }}
+      RELABELLED: ${{ contains(github.event.pull_request.labels.*.name, 'claude-review') }}
+    steps:
+      # Ruleset runs fire on every push, so each PR is reviewed once unless relabelled.
+      - name: Check for an earlier review
+        id: earlier
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          reviewed=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
+            --jq '.[] | select(.body | contains("<!-- afhi-convention-review -->")) | .id')
+          if [ -z "$reviewed" ] || [ "$RELABELLED" = true ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.earlier.outputs.run == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+      # Only the org-wide file: a repo follows a language file once the sync adds it to .afhi/.
+      - if: steps.earlier.outputs.run == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: Australian-Future-Hearing-Initiative/afhi-conventions
+          path: .afhi-conventions
+          sparse-checkout: CONVENTIONS.md
+          sparse-checkout-cone-mode: false
+      - name: Save existing comments
+        if: steps.earlier.outputs.run == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p .afhi-review
+          {
+            gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/comments" --paginate --jq '.[] | {path, line, body}'
+            gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate --jq '.[] | {body}'
+          } > .afhi-review/existing-comments.jsonl
+      - if: steps.earlier.outputs.run == 'true'
+        uses: anthropics/claude-code-action@6c690188da61cf16ee7debb28383ba67f02abb4c # v1.0.242
+        # A failed review must never fail the check the ruleset watches.
+        continue-on-error: true
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: >-
+            --model ${{ vars.CONVENTION_REVIEW_MODEL || 'claude-sonnet-5-5' }}
+            --max-turns 30
+            --allowedTools "Read,Glob,Grep,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),mcp__github_inline_comment__create_inline_comment"
+            --disallowedTools "Agent"
+          prompt: |
+            Review PR #${{ github.event.pull_request.number }} in ${{ github.repository }} against the
+            AFHI engineering conventions. Read it with
+            `gh pr view ${{ github.event.pull_request.number }}` and
+            `gh pr diff ${{ github.event.pull_request.number }}`. Report only clear violations on
+            lines the PR adds or changes; code it does not touch is out of scope.
+            Change no files.
+
+            Which rules apply:
+            - If the repository has an .afhi/ folder, the files in it: the shared
+              files it adopted, at the revision in .afhi/REVISION. Otherwise only
+              .afhi-conventions/CONVENTIONS.md.
+            - The repository's AGENTS.md, if it has one. The more specific file
+              wins, and an exception it records is not a finding.
+
+            Also check the PR title and description against the rules for commits
+            and pull requests. Skip anything a formatter, linter or type checker
+            enforces, and anything already raised in
+            .afhi-review/existing-comments.jsonl.
+
+            Output:
+            - At most 5 inline comments, one or two sentences each, starting with
+              the rule's file and section, e.g. "CONVENTIONS.md, Tests: ...".
+            - Then exactly one `gh pr comment` whose body starts with the line
+              <!-- afhi-convention-review --> followed by at most 3 lines: the
+              number of findings, any that did not fit inline, and any about the
+              title or description. Leave out a line that would say "none". With
+              no new findings, write only "Convention review: no new issues found."
+            - No praise, no summary of the diff, nothing beyond the rules.
+            - Never quote values from data files or anything that could be
+              participant data; name the file and line instead.
+      - name: Clear the re-review label
+        if: steps.earlier.outputs.run == 'true' && env.RELABELLED == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh pr edit "$PR" --remove-label claude-review
