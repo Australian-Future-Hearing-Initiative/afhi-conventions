@@ -106,12 +106,16 @@ jobs:
             .afhi-review/existing-comments.jsonl.
 
             Output:
-            - At most 5 inline comments, one or two sentences each, starting with
+            - Group findings that break the same rule into one comment that lists
+              every line it applies to.
+            - At most 10 inline comments, one or two sentences each, starting with
               the rule's file and section, e.g. "CONVENTIONS.md, Tests: ...".
-            - Then exactly one `gh pr comment` of at most 3 lines: the number of
-              findings, any that did not fit inline, and any about the title or
-              description. Leave out a line that would say "none". With no new
-              findings, write only "Convention review: no new issues found."
+            - Then exactly one `gh pr comment`: a first line with the number of
+              findings, then any findings about the title or description, then
+              every finding that did not fit inline, one line each as
+              `file:line — rule: problem`. Leave out a part that would be empty.
+              With no new findings, write only "Convention review: no new issues
+              found."
             - No praise, no summary of the diff, nothing beyond the rules.
             - Never quote values from data files or anything that could be
               participant data; name the file and line instead.
