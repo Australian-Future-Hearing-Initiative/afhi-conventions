@@ -17,20 +17,21 @@ permissions:
 concurrency:
   group: convention-review-${{ github.repository }}-${{ github.event.pull_request.number }}
 
+env:
+  PR: ${{ github.event.pull_request.number }}
+  LABEL: ${{ inputs.label }}
+
 jobs:
-  review:
+  check:
     if: >-
       github.event.pull_request.user.type != 'Bot'
       && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
-    timeout-minutes: 15
     permissions:
       contents: read
-      pull-requests: write
-      id-token: write
-    env:
-      PR: ${{ github.event.pull_request.number }}
-      LABEL: ${{ inputs.label }}
+      pull-requests: read
+    outputs:
+      labelled: ${{ steps.label.outputs.labelled }}
     steps:
       # A queued run's event still shows the label after an earlier run removed it.
       - name: Check the label is still there
@@ -40,22 +41,30 @@ jobs:
         run: |
           labels=$(gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json labels --jq '.labels[].name')
           if grep --quiet --line-regexp --fixed-strings "$LABEL" <<< "$labels"; then
-            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "labelled=true" >> "$GITHUB_OUTPUT"
           fi
-      - if: steps.label.outputs.run == 'true'
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+  review:
+    needs: check
+    if: needs.check.outputs.labelled == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 1
       # Only the org-wide file: a repo follows a language file once the sync adds it to .afhi/.
-      - if: steps.label.outputs.run == 'true'
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: Australian-Future-Hearing-Initiative/afhi-conventions
           path: .afhi-conventions
           sparse-checkout: CONVENTIONS.md
           sparse-checkout-cone-mode: false
       - name: Save existing comments
-        if: steps.label.outputs.run == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -64,8 +73,7 @@ jobs:
             gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/comments" --paginate --jq '.[] | {path, line, body}'
             gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate --jq '.[] | {body}'
           } > .afhi-review/existing-comments.jsonl
-      - if: steps.label.outputs.run == 'true'
-        uses: anthropics/claude-code-action@6c690188da61cf16ee7debb28383ba67f02abb4c # v1.0.242
+      - uses: anthropics/claude-code-action@6c690188da61cf16ee7debb28383ba67f02abb4c # v1.0.242
         # A failed review must never turn the PR's checks red.
         continue-on-error: true
         with:
@@ -106,7 +114,6 @@ jobs:
             - Never quote values from data files or anything that could be
               participant data; name the file and line instead.
       - name: Remove the label so the next review needs a new request
-        if: steps.label.outputs.run == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh pr edit "$PR" --repo "$GITHUB_REPOSITORY" --remove-label "$LABEL"
