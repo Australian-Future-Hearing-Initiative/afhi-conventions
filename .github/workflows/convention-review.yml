@@ -2,6 +2,11 @@ name: Convention review
 
 on:
   workflow_call:
+    inputs:
+      label:
+        description: The label that requests a review; removed once the review is done.
+        type: string
+        default: claude-review
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN:
         required: false
@@ -15,8 +20,7 @@ concurrency:
 jobs:
   review:
     if: >-
-      contains(github.event.pull_request.labels.*.name, 'claude-review')
-      && github.event.pull_request.user.type != 'Bot'
+      github.event.pull_request.user.type != 'Bot'
       && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -26,6 +30,7 @@ jobs:
       id-token: write
     env:
       PR: ${{ github.event.pull_request.number }}
+      LABEL: ${{ inputs.label }}
     steps:
       # A queued run's event still shows the label after an earlier run removed it.
       - name: Check the label is still there
@@ -33,9 +38,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          labelled=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/labels" \
-            --jq '.[] | select(.name == "claude-review") | .name')
-          if [ -n "$labelled" ]; then
+          labels=$(gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json labels --jq '.labels[].name')
+          if grep --quiet --line-regexp --fixed-strings "$LABEL" <<< "$labels"; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           fi
       - if: steps.label.outputs.run == 'true'
@@ -105,4 +109,4 @@ jobs:
         if: steps.label.outputs.run == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh pr edit "$PR" --remove-label claude-review
+        run: gh pr edit "$PR" --repo "$GITHUB_REPOSITORY" --remove-label "$LABEL"
