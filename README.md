@@ -23,7 +23,8 @@ jobs:
   review:
     if: contains(github.event.pull_request.labels.*.name, 'claude-review')
     uses: Australian-Future-Hearing-Initiative/afhi-conventions/.github/workflows/convention-review.yml@main
-    secrets: inherit
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
     permissions:
       contents: read
       pull-requests: write
