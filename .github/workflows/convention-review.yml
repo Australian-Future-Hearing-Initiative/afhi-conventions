@@ -76,7 +76,8 @@ jobs:
             gh api "repos/$GH_REPO/pulls/$PR/comments" --paginate --jq '.[] | {path, line, body}'
             gh api "repos/$GH_REPO/issues/$PR/comments" --paginate --jq '.[] | {body}'
           } > .afhi-review/existing-comments.jsonl
-      - uses: anthropics/claude-code-action@6c690188da61cf16ee7debb28383ba67f02abb4c # v1.0.242
+      - id: claude
+        uses: anthropics/claude-code-action@6c690188da61cf16ee7debb28383ba67f02abb4c # v1.0.242
         # A failed review must never turn the PR's checks red.
         continue-on-error: true
         with:
@@ -119,6 +120,14 @@ jobs:
             - No praise, no summary of the diff, nothing beyond the rules.
             - Never quote values from data files or anything that could be
               participant data; name the file and line instead.
+
+      - name: Tell the author if the review failed
+        if: steps.claude.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh pr comment "$PR" --body "Convention review failed; see [the run]($RUN_URL). Add the \`$LABEL\` label again to retry."
 
       - name: Remove the label so the next review needs a new request
         env:
