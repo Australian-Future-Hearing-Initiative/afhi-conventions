@@ -57,13 +57,15 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 1
-      # Only the org-wide file: a repo follows a language file once the sync adds it to .afhi/.
+
+      # Download the file
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: Australian-Future-Hearing-Initiative/afhi-conventions
           path: .afhi-conventions
-          sparse-checkout: CONVENTIONS.md
-          sparse-checkout-cone-mode: false
+          sparse-checkout: CONVENTIONS.md # Download only that file instead of the whole repo
+          sparse-checkout-cone-mode: false # Treat as an exact file name rather than a folder
+
       - name: Save existing comments
         env:
           GH_TOKEN: ${{ github.token }}
@@ -113,6 +115,7 @@ jobs:
             - No praise, no summary of the diff, nothing beyond the rules.
             - Never quote values from data files or anything that could be
               participant data; name the file and line instead.
+
       - name: Remove the label so the next review needs a new request
         env:
           GH_TOKEN: ${{ github.token }}
