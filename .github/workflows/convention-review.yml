@@ -58,7 +58,7 @@ jobs:
         with:
           fetch-depth: 1
 
-      # Download the file
+      # Download only CONVENTIONS.md: a repo follows a language file once the sync adds it to .afhi/.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: Australian-Future-Hearing-Initiative/afhi-conventions
