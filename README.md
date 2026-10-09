@@ -6,19 +6,18 @@ Org-wide coding conventions for Australian Future Hearing Initiative repositorie
 
 1. Add the repository and the shared files it follows to the matrix in
    [`sync-conventions.yml`](.github/workflows/sync-conventions.yml). The run
-   that follows opens a PR there adding them under `.afhi/`; merge it first.
-2. Start the repository's `AGENTS.md` with these lines, keeping the `@` lines
-   for the files it follows, then add its commands, layout, and rules and
-   exceptions. Add a `CLAUDE.md` containing `@AGENTS.md` for Claude Code
-   versions that don't read `AGENTS.md` on their own.
+   that follows opens a PR there adding them under `.afhi/`, with an
+   `index.md` that imports them; merge it first.
+2. Start the repository's `AGENTS.md` with these lines, then add its
+   commands, layout, and rules and exceptions. Add a `CLAUDE.md` containing
+   `@AGENTS.md` for Claude Code versions that don't read `AGENTS.md` on their
+   own.
 
    ```markdown
    This repository follows the AFHI engineering conventions. Copies of the
    shared files live in `.afhi/`; `.afhi/REVISION` names the adopted commit.
 
-   @.afhi/CONVENTIONS.md
-   @.afhi/python.md
-   @.afhi/research.md
+   @.afhi/index.md
    ```
 
 Later changes here reach each repository as a new sync PR, so it adopts each

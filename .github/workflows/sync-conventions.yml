@@ -39,7 +39,12 @@ jobs:
           # Start clean so a file dropped from the list is removed.
           rm -rf target/.afhi
           mkdir target/.afhi
-          for f in $FILES; do cp "conventions/$f" "target/.afhi/$(basename "$f")"; done
+          # index.md imports exactly what was copied, so AGENTS.md needs only @.afhi/index.md.
+          for f in $FILES; do
+            name=$(basename "$f")
+            cp "conventions/$f" "target/.afhi/$name"
+            echo "@$name" >> target/.afhi/index.md
+          done
           echo "$GITHUB_SHA" > target/.afhi/REVISION
       - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
