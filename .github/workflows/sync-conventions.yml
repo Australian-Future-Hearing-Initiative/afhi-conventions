@@ -24,13 +24,21 @@ jobs:
           - repo: hp-acoustic
             files: CONVENTIONS.md languages/python.md research.md
     steps:
+      # A short-lived token from the org's GitHub App, scoped to the one repository being synced.
+      - id: token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.CONVENTIONS_SYNC_CLIENT_ID }}
+          private-key: ${{ secrets.CONVENTIONS_SYNC_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ matrix.repo }}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: conventions
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: Australian-Future-Hearing-Initiative/${{ matrix.repo }}
-          token: ${{ secrets.CONVENTIONS_SYNC_TOKEN }}
+          token: ${{ steps.token.outputs.token }}
           path: target
       - name: Copy shared files into .afhi/
         env:
@@ -49,7 +57,7 @@ jobs:
       - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           path: target
-          token: ${{ secrets.CONVENTIONS_SYNC_TOKEN }}
+          token: ${{ steps.token.outputs.token }}
           branch: chore/sync-afhi-conventions
           delete-branch: true
           commit-message: "chore: sync AFHI conventions"

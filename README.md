@@ -21,8 +21,10 @@ Org-wide coding conventions for Australian Future Hearing Initiative repositorie
    ```
 
 Later changes here reach each repository as a new sync PR, so it adopts each
-revision through review. The workflow needs a `CONVENTIONS_SYNC_TOKEN` secret
-with contents and pull-request write access to every listed repository.
+revision through review. The workflow authenticates as the organisation's
+"AFHI conventions sync" GitHub App, through the `CONVENTIONS_SYNC_CLIENT_ID`
+variable and `CONVENTIONS_SYNC_PRIVATE_KEY` secret; install the app on each
+listed repository.
 
 ## Convention review
 
