@@ -53,7 +53,13 @@ jobs:
             cp "conventions/$f" "target/.afhi/$name"
             echo "@$name" >> target/.afhi/index.md
           done
-          echo "$GITHUB_SHA" > target/.afhi/REVISION
+          changed=$(git -C target status --porcelain -- .afhi ':(exclude).afhi/REVISION')
+          if [ -n "$changed" ]; then
+            echo "$GITHUB_SHA" > target/.afhi/REVISION
+          else
+            # The rm -rf above deleted it, so put back the revision already adopted.
+            git -C target checkout -- .afhi/REVISION
+          fi
       - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           path: target
