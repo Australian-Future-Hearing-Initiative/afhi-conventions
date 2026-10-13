@@ -26,17 +26,32 @@ revision through review. The workflow authenticates as the organisation's
 variable and `CONVENTIONS_SYNC_PRIVATE_KEY` secret; install the app on each
 listed repository.
 
-## Convention review
+## Claude reviews
 
-[`convention-review.yml`](.github/workflows/convention-review.yml) has Claude
-review a PR against these conventions when someone with write access adds the
-`claude-review` label, draft or not. It comments only on lines the PR changes,
-never blocks a merge, and removes the label afterwards, so each label requests
-one review.
+Two reusable workflows have Claude review a PR when someone with write access
+adds their label, draft or not:
 
-To turn it on in a repository, create the `claude-review` label, give the
-repository access to the `CLAUDE_CODE_OAUTH_TOKEN` organisation secret, and
-add this as `.github/workflows/convention-review.yml`:
+| Label | Workflow | What Claude checks |
+| --- | --- | --- |
+| `claude-conventions` | [`convention-review.yml`](.github/workflows/convention-review.yml) | The PR against these conventions |
+| `claude-correctness` | [`correctness-review.yml`](.github/workflows/correctness-review.yml) | The changed code for bugs: crashes, wrong results, broken contracts |
+
+Each review comments only on lines the PR changes, never blocks a merge, and
+removes its label afterwards, so each label requests one review. The two run
+independently, so both labels can be added at once.
+
+The correctness review judges the code against what the PR description,
+docstrings, `AGENTS.md` and `docs/` say it should do, so it can only catch a
+bug that breaks something written down. To point it at a specific risk, add a
+**Review focus** section to the PR description. It runs on Opus by default;
+the `CORRECTNESS_REVIEW_MODEL` and `CONVENTION_REVIEW_MODEL` Actions variables
+override each review's model.
+
+To turn them on in a repository, create the labels, give the repository access
+to the `CLAUDE_CODE_OAUTH_TOKEN` organisation secret, and add either or both of
+these under `.github/workflows/`.
+
+`convention-review.yml`:
 
 ```yaml
 name: Convention review
@@ -45,8 +60,27 @@ on:
     types: [opened, reopened, labeled]
 jobs:
   review:
-    if: contains(github.event.pull_request.labels.*.name, 'claude-review')
+    if: contains(github.event.pull_request.labels.*.name, 'claude-conventions')
     uses: Australian-Future-Hearing-Initiative/afhi-conventions/.github/workflows/convention-review.yml@main
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+```
+
+`correctness-review.yml`:
+
+```yaml
+name: Correctness review
+on:
+  pull_request:
+    types: [opened, reopened, labeled]
+jobs:
+  review:
+    if: contains(github.event.pull_request.labels.*.name, 'claude-correctness')
+    uses: Australian-Future-Hearing-Initiative/afhi-conventions/.github/workflows/correctness-review.yml@main
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
     permissions:

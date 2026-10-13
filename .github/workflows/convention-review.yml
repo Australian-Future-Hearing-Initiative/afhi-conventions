@@ -6,7 +6,7 @@ on:
       label:
         description: The label that requests a review; removed once the review is done.
         type: string
-        default: claude-review
+        default: claude-conventions
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN:
         required: false

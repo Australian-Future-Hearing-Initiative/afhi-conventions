@@ -1,0 +1,136 @@
+name: Correctness review
+
+on:
+  workflow_call:
+    inputs:
+      label:
+        description: The label that requests a review; removed once the review is done.
+        type: string
+        default: claude-correctness
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN:
+        required: false
+
+permissions:
+  contents: read
+
+# Kept apart from the convention review's group: a group holds one pending run, so sharing it could cancel a queued review.
+concurrency:
+  group: correctness-review-${{ github.repository }}-${{ github.event.pull_request.number }}
+
+env:
+  PR: ${{ github.event.pull_request.number }}
+  LABEL: ${{ inputs.label }}
+  GH_REPO: ${{ github.repository }}
+
+jobs:
+  check:
+    if: >-
+      github.event.pull_request.user.type != 'Bot'
+      && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      labelled: ${{ steps.label.outputs.labelled }}
+    steps:
+      # A queued run's event still shows the label after an earlier run removed it.
+      - name: Check the label is still there
+        id: label
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          labels=$(gh pr view "$PR" --json labels --jq '.labels[].name')
+          if grep --quiet --line-regexp --fixed-strings "$LABEL" <<< "$labels"; then
+            echo "labelled=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  review:
+    needs: check
+    if: needs.check.outputs.labelled == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+
+      - name: Save existing comments
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p .afhi-review
+          {
+            gh api "repos/$GH_REPO/pulls/$PR/comments" --paginate --jq '.[] | {path, line, body}'
+            gh api "repos/$GH_REPO/issues/$PR/comments" --paginate --jq '.[] | {body}'
+          } > .afhi-review/existing-comments.jsonl
+      - id: claude
+        uses: anthropics/claude-code-action@6c690188da61cf16ee7debb28383ba67f02abb4c # v1.0.242
+        # A failed review must never turn the PR's checks red.
+        continue-on-error: true
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: >-
+            --model ${{ vars.CORRECTNESS_REVIEW_MODEL || 'claude-opus-5-5' }}
+            --max-turns 60
+            --allowedTools "Read,Glob,Grep,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),mcp__github_inline_comment__create_inline_comment"
+            --disallowedTools "Agent"
+          prompt: |
+            Review PR #${{ env.PR }} in ${{ env.GH_REPO }} for correctness bugs: code
+            that crashes, gives a wrong result, loses or corrupts data, or breaks
+            the contract its docstring, the PR description or the repository's
+            docs state. Read the PR with `gh pr view ${{ env.PR }}` and
+            `gh pr diff ${{ env.PR }}`. Change no files.
+
+            First work out what the changed code is meant to do, from:
+            - The PR title and description. If the description has a "Review
+              focus" section, check that first.
+            - The docstrings and comments on the changed code, the repository's
+              AGENTS.md if it has one, and any docs/ page they point to.
+            - The code the change calls and the code that calls it. Read any file
+              you need.
+
+            What to report:
+            - Bugs on lines the PR adds or changes, and bugs the change causes in
+              code it calls or that calls it. Code the change does not affect is
+              out of scope.
+            - Only a bug you can state as a concrete failure: the input or state,
+              and the crash, wrong result or broken contract it leads to. Leave
+              out anything you cannot state that way.
+            - When a bug depends on something the code does not settle, such as
+              the units a caller passes, name that assumption.
+            - Leave out style, naming, comments and documentation wording, which
+              the convention review covers, and anything a formatter, linter or
+              type checker enforces. Also leave out anything already raised in
+              .afhi-review/existing-comments.jsonl.
+
+            Output:
+            - One inline comment per bug, on the changed line that causes it, in
+              two to four sentences: the failure first ("When `x` is empty, ..."),
+              then the cause.
+            - Then exactly one `gh pr comment`: a first line with the number of
+              findings, then one line as `file:line — problem` for each bug that
+              no changed line could carry. Leave out that list when it is empty.
+              With no new findings, write only "Correctness review: no new issues
+              found."
+            - No praise, no summary of the diff, nothing beyond the bugs.
+            - Never quote values from data files or anything that could be
+              participant data; name the file and line instead.
+
+      - name: Tell the author if the review failed
+        if: steps.claude.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh pr comment "$PR" --body "Correctness review failed; see [the run]($RUN_URL). Add the \`$LABEL\` label again to retry."
+
+      - name: Remove the label so the next review needs a new request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh pr edit "$PR" --remove-label "$LABEL"
