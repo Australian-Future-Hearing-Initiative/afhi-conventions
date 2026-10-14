@@ -190,14 +190,19 @@ Every change also follows these rules:
 - Every testable behaviour change carries a test; a bug fix carries the test
   that would have caught it. Explain any case that cannot reasonably be tested
   in the PR.
+- The test checks what the change is for — the gain a filter delivers, not
+  only that its coefficients are finite — against an independently derived
+  expectation. An assertion that holds by construction checks nothing.
 - A missing required fixture or package-data file fails the test; it does not
   skip. A test that needs an optional platform, dependency or restricted
   dataset may skip, with an explicit reason, outside its required environment;
   in the designated validation environment a missing prerequisite is a
   failure.
 - Numeric assertions state and justify their tolerance — from reference
-  results, numerical analysis or documented measurement uncertainty. A
-  tolerance is never widened solely to make a failing test pass.
+  results, numerical analysis or documented measurement uncertainty — and are
+  no looser than that source supports: a result that is exact by algebra is
+  checked to a rounding bound. A tolerance is never widened solely to make a
+  failing test pass.
 - Golden files are reviewed regression baselines, not proof of correctness.
   Regenerate them deliberately, with the diff reviewable on its own and the
   expected change explained; matching a generated baseline does not replace an
