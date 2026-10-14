@@ -121,13 +121,14 @@ jobs:
             - Never quote values from data files or anything that could be
               participant data; name the file and line instead.
 
-      - name: Tell the author if the review failed
-        if: steps.claude.outcome == 'failure'
+      - name: Tell the author if the review failed or was skipped
+        # A skipped review succeeds without a conclusion, e.g. when this PR changes the workflow that calls it.
+        if: steps.claude.outcome == 'failure' || steps.claude.outputs.conclusion != 'success'
         env:
           GH_TOKEN: ${{ github.token }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          gh pr comment "$PR" --body "Convention review failed; see [the run]($RUN_URL). Add the \`$LABEL\` label again to retry."
+          gh pr comment "$PR" --body "Convention review did not complete; see [the run]($RUN_URL). If this PR changes the workflow file that calls the review, the review is skipped until that change is on the default branch. Otherwise, add the \`$LABEL\` label again to retry."
 
       - name: Remove the label so the next review needs a new request
         env:
