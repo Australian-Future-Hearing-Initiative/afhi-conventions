@@ -30,7 +30,7 @@ Output:
 - One inline comment per bug, on the changed line that causes it, in
   two to four sentences: the failure first ("When `x` is empty, ..."),
   then the cause.
-- Then exactly one `gh pr comment`. Its first line is "Correctness
+- Then exactly one `gh pr comment $PR`. Its first line is "Correctness
   review (bugs: crashes, wrong results, broken contracts): N
   findings.", with N the number of findings. Then one line as
   `file:line — problem` for each bug that no changed line could

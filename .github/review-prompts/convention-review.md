@@ -21,7 +21,7 @@ Output:
   every line it applies to.
 - At most 10 inline comments, one or two sentences each, starting with
   the rule's file and section, e.g. "CONVENTIONS.md, Tests: ...".
-- Then exactly one `gh pr comment`. Its first line is "Convention
+- Then exactly one `gh pr comment $PR`. Its first line is "Convention
   review (everything in CONVENTIONS.md: style, docs, tests, design,
   PR format): N findings.", with N the number of findings. Then any
   findings about the title or description, then every finding that
