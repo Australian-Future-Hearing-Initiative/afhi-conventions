@@ -4,12 +4,12 @@ on:
   workflow_call:
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN:
-        required: false
+        required: false # Will post a comment on the PR with a link to the run
 
 permissions:
   contents: read
 
-# One group per PR keeps reviews in order; a replaced queued run loses nothing, since every run rereads the labels.
+# Avoid duplicated reviews
 concurrency:
   group: claude-review-${{ github.repository }}-${{ github.event.pull_request.number }}
 
@@ -21,6 +21,7 @@ env:
 
 jobs:
   check:
+    # Skip bot PRs and PRs from forks
     if: >-
       github.event.pull_request.user.type != 'Bot'
       && github.event.pull_request.head.repo.full_name == github.repository
@@ -32,7 +33,6 @@ jobs:
       correctness: ${{ steps.labels.outputs.correctness }}
       conventions: ${{ steps.labels.outputs.conventions }}
     steps:
-      # A queued run's event still shows labels that an earlier run has since removed.
       - name: Check which review labels are still there
         id: labels
         env:
