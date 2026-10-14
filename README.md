@@ -50,6 +50,10 @@ bug that breaks something written down. To point it at a specific risk, add a
 the `CORRECTNESS_REVIEW_MODEL` and `CONVENTION_REVIEW_MODEL` Actions variables
 override each review's model.
 
+Each review's instructions to Claude live in
+[`.github/review-prompts/`](.github/review-prompts/); the workflow fills in
+`$PR` and `$GH_REPO` when it runs.
+
 To turn the reviews on in a repository, give it access to the
 `CLAUDE_CODE_OAUTH_TOKEN` organisation secret and create the labels; GitHub
 shows each description when someone hovers over the label:
