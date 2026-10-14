@@ -45,8 +45,10 @@ requests one review.
 
 The correctness review judges the code against what the PR description,
 docstrings, `AGENTS.md` and `docs/` say it should do, so it can only catch a
-bug that breaks something written down. To point it at a specific risk, add a
-**Review focus** section to the PR description. It runs on Opus by default;
+bug that breaks something written down. It checks the change against
+[`correctness.md`](correctness.md), a list of common failure modes; a
+repository adds its own risks to its `AGENTS.md`. To point it at a specific
+risk, add a **Review focus** section to the PR description. It runs on Opus by default;
 the `CORRECTNESS_REVIEW_MODEL` and `CONVENTION_REVIEW_MODEL` Actions variables
 override each review's model.
 

@@ -7,7 +7,8 @@ Change no files.
 Which rules apply:
 - If the repository has an .afhi/ folder, the files in it: the shared
   files it adopted, at the revision in .afhi/REVISION. Otherwise only
-  .afhi-conventions/CONVENTIONS.md.
+  .afhi-conventions/CONVENTIONS.md. Never correctness.md: it is the
+  correctness review's checklist, not rules.
 - The repository's AGENTS.md, if it has one. The more specific file
   wins, and an exception it records is not a finding.
 

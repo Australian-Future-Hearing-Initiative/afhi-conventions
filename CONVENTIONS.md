@@ -15,6 +15,11 @@ These files apply, from most general to most specific:
 3. The repository's own `AGENTS.md`, which names the exact location and
    adopted revision of the shared files it follows, and how they are updated.
 
+`correctness.md` is not part of this chain. It lists common ways code goes
+wrong as questions to ask of a change, not rules to follow: an item matters
+only when the code actually fails that way. Check a change against it before
+asking for review; the Claude correctness review uses it too.
+
 When they disagree:
 
 - **The more specific file wins.** The repository's `AGENTS.md` beats the
