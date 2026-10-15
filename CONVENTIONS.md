@@ -230,10 +230,13 @@ Every change also follows these rules:
 - One source of truth per concept: a constant that means the same thing
   (the CARFAC sample rate, the calibration level) is imported, not redeclared.
   Two values that happen to coincide but mean different things stay separate.
-- A number that is a choice — a tuning parameter, threshold, regularisation
-  weight or numerical epsilon — is a named constant with a one-line comment
-  saying where the value comes from: a citation, a measurement, or how it was
-  tuned. Mathematical constants (the `20` in `20 * log10`) are not choices.
+- Numerical choices whose purpose or value is not obvious — such as tuning
+  parameters, thresholds, regularisation weights or epsilons — should be named
+  and briefly justified. Module constants can use a one-line comment; keyword
+  defaults such as `alpha=1e-3` are already named and, where justification is
+  needed, should be explained in the parameter's docstring. Mathematical
+  constants (such as `20` in `20 * log10`) are exempt, and test tolerances
+  follow the rule under Tests.
 - Validate external inputs at the boundary where they arrive.
 - Do not add checks that break how compiled or performance-critical code runs;
   the language file says how (see the JAX rule in `python.md`).
