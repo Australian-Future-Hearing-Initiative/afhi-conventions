@@ -1,0 +1,183 @@
+name: Claude review
+
+on:
+  workflow_call:
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN:
+        required: false # Will post a comment on the PR with a link to the run
+
+permissions:
+  contents: read
+
+# Avoid duplicated reviews
+concurrency:
+  group: claude-review-${{ github.repository }}-${{ github.event.pull_request.number }}
+
+env:
+  PR: ${{ github.event.pull_request.number }}
+  GH_REPO: ${{ github.repository }}
+  CORRECTNESS_LABEL: claude-correctness
+  CONVENTIONS_LABEL: claude-conventions
+
+jobs:
+  check:
+    # Skip bot PRs and PRs from forks
+    if: >-
+      github.event.pull_request.user.type != 'Bot'
+      && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      correctness: ${{ steps.labels.outputs.correctness }}
+      conventions: ${{ steps.labels.outputs.conventions }}
+    steps:
+      - name: Check which review labels are still there
+        id: labels
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          labels=$(gh pr view "$PR" --json labels --jq '.labels[].name')
+          has_label() { grep --quiet --line-regexp --fixed-strings "$1" <<< "$labels"; }
+          if has_label "$CORRECTNESS_LABEL"; then echo "correctness=true" >> "$GITHUB_OUTPUT"; fi
+          if has_label "$CONVENTIONS_LABEL"; then echo "conventions=true" >> "$GITHUB_OUTPUT"; fi
+
+  correctness:
+    needs: check
+    if: needs.check.outputs.correctness == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+
+      # Fetch at this workflow's own commit, so a branch under test uses its own prompt.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: Australian-Future-Hearing-Initiative/afhi-conventions
+          ref: ${{ job.workflow_sha }}
+          path: .afhi-conventions
+          sparse-checkout: /.github/review-prompts/correctness-review.md # Download only these files instead of the whole repo
+          sparse-checkout-cone-mode: false # Treat as exact file names rather than folders
+
+      - name: Save existing comments
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p .afhi-review
+          {
+            gh api "repos/$GH_REPO/pulls/$PR/comments" --paginate --jq '.[] | {path, line, body}'
+            gh api "repos/$GH_REPO/issues/$PR/comments" --paginate --jq '.[] | {body}'
+          } > .afhi-review/existing-comments.jsonl
+
+      - name: Fill in the prompt
+        id: prompt
+        run: |
+          {
+            echo 'text<<PROMPT_END'
+            envsubst '$PR $GH_REPO' < .afhi-conventions/.github/review-prompts/correctness-review.md
+            echo 'PROMPT_END'
+          } >> "$GITHUB_OUTPUT"
+      - id: claude
+        uses: anthropics/claude-code-action@6c690188da61cf16ee7debb28383ba67f02abb4c # v1.0.242
+        # A failed review must never turn the PR's checks red.
+        continue-on-error: true
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: >-
+            --model ${{ vars.CORRECTNESS_REVIEW_MODEL || 'claude-opus-5-5' }}
+            --max-turns 60
+            --allowedTools "Read,Glob,Grep,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment ${{ env.PR }}:*),mcp__github_inline_comment__create_inline_comment"
+            --disallowedTools "Agent"
+          prompt: ${{ steps.prompt.outputs.text }}
+
+      - name: Tell the author if the review failed
+        if: steps.claude.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh pr comment "$PR" --body "Correctness review failed; see [the run]($RUN_URL). Add the \`$CORRECTNESS_LABEL\` label again to retry."
+
+      - name: Remove the label so the next review needs a new request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh pr edit "$PR" --remove-label "$CORRECTNESS_LABEL"
+
+  conventions:
+    needs: [check, correctness]
+    # Runs after the correctness review, even a skipped one, so it can see and skip that review's findings.
+    if: >-
+      !cancelled()
+      && needs.check.outputs.conventions == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+
+      # Fetch at this workflow's own commit; a repo follows a language file once the sync adds it to .afhi/.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: Australian-Future-Hearing-Initiative/afhi-conventions
+          ref: ${{ job.workflow_sha }}
+          path: .afhi-conventions
+          sparse-checkout: | # Download only these files instead of the whole repo
+            /CONVENTIONS.md
+            /.github/review-prompts/convention-review.md
+          sparse-checkout-cone-mode: false # Treat as exact file names rather than folders
+
+      - name: Save existing comments
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p .afhi-review
+          {
+            gh api "repos/$GH_REPO/pulls/$PR/comments" --paginate --jq '.[] | {path, line, body}'
+            gh api "repos/$GH_REPO/issues/$PR/comments" --paginate --jq '.[] | {body}'
+          } > .afhi-review/existing-comments.jsonl
+
+      - name: Fill in the prompt
+        id: prompt
+        run: |
+          {
+            echo 'text<<PROMPT_END'
+            envsubst '$PR $GH_REPO' < .afhi-conventions/.github/review-prompts/convention-review.md
+            echo 'PROMPT_END'
+          } >> "$GITHUB_OUTPUT"
+      - id: claude
+        uses: anthropics/claude-code-action@6c690188da61cf16ee7debb28383ba67f02abb4c # v1.0.242
+        # A failed review must never turn the PR's checks red.
+        continue-on-error: true
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: >-
+            --model ${{ vars.CONVENTION_REVIEW_MODEL || 'claude-sonnet-5-5' }}
+            --max-turns 30
+            --allowedTools "Read,Glob,Grep,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment ${{ env.PR }}:*),mcp__github_inline_comment__create_inline_comment"
+            --disallowedTools "Agent"
+          prompt: ${{ steps.prompt.outputs.text }}
+
+      - name: Tell the author if the review failed
+        if: steps.claude.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh pr comment "$PR" --body "Convention review failed; see [the run]($RUN_URL). Add the \`$CONVENTIONS_LABEL\` label again to retry."
+
+      - name: Remove the label so the next review needs a new request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh pr edit "$PR" --remove-label "$CONVENTIONS_LABEL"
