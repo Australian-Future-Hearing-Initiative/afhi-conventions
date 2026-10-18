@@ -104,7 +104,9 @@ narrative; a local ordering constraint stays inline at the line that enforces
 it. When a local decision rests on a longer derivation — a numerical method, a
 calibration, a stability fix — keep a concise inline reason and link to the
 `docs/` page that carries the derivation. Do not delete the reasoning because
-it is long.
+it is long. An equation that defines what a function returns — a transfer
+function, a coefficient's sign convention — is contract, not derivation, and
+stays in the doc comment.
 
 This governs prose in source code only — commit messages, PR bodies, `docs/`
 and comments in config files (YAML, TOML) stay as thorough as the subject
@@ -246,9 +248,9 @@ Every change also follows these rules:
 - Validate external inputs at the boundary where they arrive.
 - Do not add checks that break how compiled or performance-critical code runs;
   the language file says how (see the JAX rule in `python.md`).
-- Error messages name the invalid field and the violated constraint, and
-  include the value only when it is safe to log: never a credential or
-  participant data.
+- Error messages name the invalid field, the violated constraint and the value
+  received. Leave the value out only when it is not safe to log: a credential
+  or participant data.
 - Catch only the exceptions the caller can meaningfully handle. Do not swallow
   unexpected failures or use an exception to conceal invalid state.
 - Keep dependencies minimal: one dependency manager per language ecosystem in
