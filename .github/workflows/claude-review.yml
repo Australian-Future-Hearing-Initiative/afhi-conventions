@@ -57,13 +57,15 @@ jobs:
         with:
           fetch-depth: 1
 
-      # Fetch at this workflow's own commit, so a branch under test uses its own prompt.
+      # Fetch at this workflow's own commit, so a branch under test uses its own prompt and checklist.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: Australian-Future-Hearing-Initiative/afhi-conventions
           ref: ${{ job.workflow_sha }}
           path: .afhi-conventions
-          sparse-checkout: /.github/review-prompts/correctness-review.md # Download only these files instead of the whole repo
+          sparse-checkout: | # Download only these files instead of the whole repo
+            /correctness.md
+            /.github/review-prompts/correctness-review.md
           sparse-checkout-cone-mode: false # Treat as exact file names rather than folders
 
       - name: Save existing comments

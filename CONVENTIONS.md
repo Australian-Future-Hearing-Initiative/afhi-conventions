@@ -15,6 +15,9 @@ These files apply, from most general to most specific:
 3. The repository's own `AGENTS.md`, which names the exact location and
    adopted revision of the shared files it follows, and how they are updated.
 
+`correctness.md` is not part of this chain: it is a checklist of common bugs
+to check a change against before review.
+
 When they disagree:
 
 - **The more specific file wins.** The repository's `AGENTS.md` beats the
