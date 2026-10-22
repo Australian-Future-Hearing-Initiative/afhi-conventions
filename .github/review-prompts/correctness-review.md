@@ -15,8 +15,7 @@ First work out what the changed code is meant to do, from:
 What to look for: the common failure modes in correctness.md. Use
 .afhi/correctness.md if the repository has one, otherwise
 .afhi-conventions/correctness.md. Check the changed code against each
-section that applies. Its items are questions, not rules: one becomes
-a finding only when the code actually fails that way.
+section that applies.
 
 What to report:
 - Bugs on lines the PR adds or changes, and bugs the change causes in

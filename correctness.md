@@ -1,14 +1,11 @@
 # Correctness checklist
 
-Common ways code goes wrong, written as questions to ask of a change. These
+Common ways code goes wrong, written as questions to ask of a change before
+review; the Claude correctness review checks each change against it too. These
 are not rules: an item matters only when the changed code actually fails that
 way, with an input or state you can name that leads to a crash, a wrong
-result, lost or corrupted data, or a broken contract. Rules for how code is
-written live in `CONVENTIONS.md` and are not repeated here.
-
-Authors can work through it before asking for review, and the Claude
-correctness review checks each change against it. A repository adds its own
-risks to its `AGENTS.md`.
+result, lost or corrupted data, or a broken contract. A repository adds its
+own risks to its `AGENTS.md`.
 
 ## Inputs at the edges
 
