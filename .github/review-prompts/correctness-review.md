@@ -12,6 +12,11 @@ First work out what the changed code is meant to do, from:
 - The code the change calls and the code that calls it. Read any file
   you need.
 
+What to look for: the common failure modes in correctness.md. Use
+.afhi/correctness.md if the repository has one, otherwise
+.afhi-conventions/correctness.md. Check the changed code against each
+section that applies.
+
 What to report:
 - Bugs on lines the PR adds or changes, and bugs the change causes in
   code it calls or that calls it. Code the change does not affect is
@@ -19,6 +24,8 @@ What to report:
 - Only a bug you can state as a concrete failure: the input or state,
   and the crash, wrong result or broken contract it leads to. Leave
   out anything you cannot state that way.
+- Work out any numbers in a failure step by step; if you are not
+  sure of them, describe the failure without numbers.
 - When a bug depends on something the code does not settle, such as
   the units a caller passes, name that assumption.
 - Leave out style, naming, comments and documentation wording, which

@@ -5,8 +5,9 @@ adds or changes; code it does not touch is out of scope.
 Change no files.
 
 Which rules apply:
-- If the repository has an .afhi/ folder, the files in it: the shared
-  files it adopted, at the revision in .afhi/REVISION. Otherwise only
+- If the repository has an .afhi/ folder, exclusively the rule files
+  in it that CONVENTIONS.md lists under "How the rules fit together",
+  at the revision in .afhi/REVISION. Otherwise only
   .afhi-conventions/CONVENTIONS.md.
 - The repository's AGENTS.md, if it has one. The more specific file
   wins, and an exception it records is not a finding.
