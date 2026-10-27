@@ -1,6 +1,6 @@
 # Correctness checklist
 
-Common ways code goes wrong, written as questions to ask of a change before
+Common ways code goes wrong, listed as things to check in a change before
 review; the Claude correctness review checks each change against it too. These
 are not rules: an item matters only when the changed code actually fails that
 way, with an input or state you can name that leads to a crash, a wrong
