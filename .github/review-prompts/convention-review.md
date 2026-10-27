@@ -20,15 +20,17 @@ enforces, and anything already raised in
 Output:
 - Group findings that break the same rule into one comment that lists
   every line it applies to.
-- At most 10 inline comments, one or two sentences each, starting with
-  the rule's file and section, e.g. "CONVENTIONS.md, Tests: ...".
+- Post every finding about code as an inline comment, one or two
+  sentences, starting with the rule's file and section, e.g.
+  "CONVENTIONS.md, Tests: ...". A finding that spans several lines or
+  files goes on the changed line it most concerns and names the rest.
 - Then exactly one `gh pr comment $PR`. Its first line is "Convention
   review (everything in CONVENTIONS.md: style, docs, tests, design,
   PR format): N findings.", with N the number of findings. Then any
-  findings about the title or description, then every finding that
-  did not fit inline, one line each as `file:line — rule: problem`.
-  Leave out a part that would be empty. With no new findings, end
-  the first line with "no new issues found." and add nothing.
+  findings about the title or description, one line each as
+  `rule: problem`. Leave out that list when it is empty. With no new
+  findings, end the first line with "no new issues found." and add
+  nothing.
 - No praise, no summary of the diff, nothing beyond the rules.
 - Never quote values from data files or anything that could be
   participant data; name the file and line instead.
